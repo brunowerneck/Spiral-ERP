@@ -1,0 +1,60 @@
+version: "3.7"
+
+services:
+
+  database:
+    image: mysql:8.0.19
+    command: '--default-authentication-plugin=mysql_native_password'
+    restart: always    
+    secrets:
+      - db-password
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - backnet
+    environment:
+      - MYSQL_DATABASE=erp_free
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db-password
+    ports:
+      - 3306:3306
+      - 33060:33060
+  
+  backend:
+    build: api
+    restart: always
+    secrets:
+      - db-password
+    expose:
+      - 5000
+    volumes:
+      - ./api:/code
+    environment:
+      - FLASK_ENV='development'
+      - FLASK_DEBUG=1
+    networks:
+      - backnet
+      - frontnet
+    depends_on:
+      - database
+        
+
+  proxy:
+    build: proxy
+    restart: always
+    ports:
+      - 80:80
+    depends_on: 
+      - backend
+    networks:
+      - frontnet
+
+networks:
+  backnet:
+  frontnet:
+
+secrets:
+  db-password:
+    file: ./database/password.txt
+
+volumes:
+  db-data:
